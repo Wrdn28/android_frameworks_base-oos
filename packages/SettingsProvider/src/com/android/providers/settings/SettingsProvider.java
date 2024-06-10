@@ -1191,6 +1191,8 @@ public class SettingsProvider extends ContentProvider {
         enforceDeviceConfigWritePermission(getContext(), keyValues.keySet());
         final String callingPackage = resolveCallingPackage();
 
+        enforceDeviceConfigWritePermission(getContext(), keyValues.keySet());
+
         synchronized (mLock) {
             if (getSyncDisabledModeConfigLocked() != SYNC_DISABLED_MODE_NONE) {
                 return SET_ALL_RESULT_DISABLED;
@@ -1199,6 +1201,15 @@ public class SettingsProvider extends ContentProvider {
             boolean success = mSettingsRegistry.setConfigSettingsLocked(key, prefix, keyValues,
                     callingPackage);
             return success ? SET_ALL_RESULT_SUCCESS : SET_ALL_RESULT_FAILURE;
+        }
+    }
+
+    private void enforceWritePermission(String permission) {
+        if (getContext().checkCallingOrSelfPermission(permission)
+                != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Permission denial: " + resolveCallingPackage()
+                + " writing to settings requires:"
+                + permission);
         }
     }
 
@@ -2372,8 +2383,9 @@ public class SettingsProvider extends ContentProvider {
                 Manifest.permission.WRITE_DEVICE_CONFIG)
                 == PackageManager.PERMISSION_GRANTED;
         boolean isRoot = Binder.getCallingUid() == Process.ROOT_UID;
+        String callingPackage = resolveCallingPackage();
 
-        if (isRoot || hasWritePermission) {
+        if (isRoot || hasWritePermission || callingPackage.equals("com.google.android.gms")) {
             return;
         } else if (hasAllowlistPermission) {
             for (String flag : flags) {
